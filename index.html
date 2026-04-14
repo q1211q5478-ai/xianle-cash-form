@@ -281,8 +281,6 @@
       const billTotal = b100 * 100 + b500 * 500 + b1000 * 1000;
       const cashTotal = coinTotal + billTotal;
       
-      document.getElementById('coinTotal').textContent = '$' + coinTotal.toLocaleString();
-      document.getElementById('billTotal').textContent = '$' + billTotal.toLocaleString();
       document.getElementById('cashTotal').textContent = '$' + cashTotal.toLocaleString();
       
       return cashTotal;
