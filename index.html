@@ -221,7 +221,44 @@
       const yesterdayStr = yesterday.toISOString().split('T')[0];
       const store = document.getElementById('store').value;
       
-      // Build query: filter by store AND yesterday's date
+      if (!store) {
+        document.getElementById('pettyCash').textContent = '$--';
+        return;
+      }
+      
+      // 先查 petty_settings（手動設定值）
+      try {
+        const settingsUrl = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
+        const settingsRes = await fetch(settingsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: 'petty_settings' }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: 'store_id' },
+                  op: 'EQUAL',
+                  value: { stringValue: store }
+                }
+              },
+              limit: 1
+            }
+          })
+        });
+        const settingsData = await settingsRes.json();
+        for (const item of settingsData) {
+          if (item.document && item.document.fields && item.document.fields.amount) {
+            const amount = parseInt(item.document.fields.amount.integerValue || item.document.fields.amount.doubleValue || 0);
+            document.getElementById('pettyCash').textContent = '$' + amount.toLocaleString();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load petty settings:', e);
+      }
+      
+      // 如果沒有設定值，抓昨天報表的 cashReceived + 2000
       const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
       const body = {
         structuredQuery: {
@@ -248,7 +285,6 @@
         });
         const data = await res.json();
         
-        // Get yesterday's totalReceived for this store
         let yesterdayCash = 0;
         for (const item of data) {
           if (item.document && item.document.fields) {
@@ -259,7 +295,6 @@
           }
         }
         
-        // Add 2000 paper money reserve + yesterday's coin balance
         const pettyCash = yesterdayCash + 2000;
         document.getElementById('pettyCash').textContent = '$' + pettyCash.toLocaleString();
       } catch (e) {
