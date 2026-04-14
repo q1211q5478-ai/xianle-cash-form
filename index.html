@@ -363,7 +363,7 @@
       document.getElementById(id).addEventListener('input', updateDiff);
     });
     
-    // 選擇店家後自動載入昨日零用金
+    // 選擇店家後自動載入零用金
     document.getElementById('store').addEventListener('change', () => {
       const store = document.getElementById('store').value;
       if (store) {
@@ -372,6 +372,14 @@
         document.getElementById('pettyCash').textContent = '$--';
       }
     });
+    
+    // 頁面載入時，若店家已有值則自動查詢
+    (function initPettyCash() {
+      const store = document.getElementById('store').value;
+      if (store) {
+        loadPettyCash();
+      }
+    })();
     
     async function submitForm() {
       const store = document.getElementById('store').value;
