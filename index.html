@@ -214,19 +214,31 @@
     document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
     
     // Load yesterday's petty cash on init
+      // Store name → store_id mapping (matches bot's STORES)
+    const STORE_NAME_TO_ID = {
+      '總店': 'zongdian',
+      '麥金店': 'maijin',
+    };
+    const STORE_ID_TO_NAME = {
+      'zongdian': '東信路總店',
+      'maijin': '麥金店',
+    };
+    
+    // Load today's petty cash (priority: today's petty_settings > yesterday's report + 2000)
     async function loadPettyCash() {
       const todayStr = today.toISOString().split('T')[0];
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const store = document.getElementById('store').value;
+      const storeName = document.getElementById('store').value;
+      const storeId = STORE_NAME_TO_ID[storeName];
       
-      if (!store) {
+      if (!storeName) {
         document.getElementById('pettyCash').textContent = '$--';
         return;
       }
       
-      // 先查 petty_settings（手動設定值）
+      // 1. 查今天的 petty_settings（今天 Bot 設定的值）
       try {
         const settingsUrl = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
         const settingsRes = await fetch(settingsUrl, {
@@ -236,10 +248,12 @@
             structuredQuery: {
               from: [{ collectionId: 'petty_settings' }],
               where: {
-                fieldFilter: {
-                  field: { fieldPath: 'store_id' },
-                  op: 'EQUAL',
-                  value: { stringValue: store }
+                compositeFilter: {
+                  op: 'AND',
+                  filters: [
+                    { fieldFilter: { field: { fieldPath: 'store_id' }, op: 'EQUAL', value: { stringValue: storeId } } },
+                    { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: todayStr } } }
+                  ]
                 }
               },
               limit: 1
@@ -251,33 +265,33 @@
           if (item.document && item.document.fields && item.document.fields.amount) {
             const amount = parseInt(item.document.fields.amount.integerValue || item.document.fields.amount.doubleValue || 0);
             document.getElementById('pettyCash').textContent = '$' + amount.toLocaleString();
-            return;
+            return; // 找到今天設定值就直接用
           }
         }
       } catch (e) {
         console.error('Failed to load petty settings:', e);
       }
       
-      // 如果沒有設定值，抓昨天報表的 cashReceived + 2000
-      const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
-      const body = {
-        structuredQuery: {
-          from: [{ collectionId: 'reports' }],
-          where: {
-            compositeFilter: {
-              op: 'AND',
-              filters: [
-                { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: yesterdayStr } } },
-                { fieldFilter: { field: { fieldPath: 'store' }, op: 'EQUAL', value: { stringValue: store } } }
-              ]
-            }
-          },
-          limit: 1,
-          orderBy: [{ field: { fieldPath: 'date' }, direction: 'DESC' }]
-        }
-      };
-      
+      // 2. 查昨天報表的 cashReceived + 2000（自動計算）
       try {
+        const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
+        const body = {
+          structuredQuery: {
+            from: [{ collectionId: 'reports' }],
+            where: {
+              compositeFilter: {
+                op: 'AND',
+                filters: [
+                  { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: yesterdayStr } } },
+                  { fieldFilter: { field: { fieldPath: 'store' }, op: 'EQUAL', value: { stringValue: storeName } } }
+                ]
+              }
+            },
+            limit: 1,
+            orderBy: [{ field: { fieldPath: 'date' }, direction: 'DESC' }]
+          }
+        };
+        
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
