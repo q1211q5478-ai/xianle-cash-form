@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🍗 現金回報｜鮮樂炸雞</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; padding: 16px; }
+    .container { max-width: 480px; margin: 0 auto; }
+    .header { text-align: center; padding: 20px 0; }
+    .header h1 { font-size: 20px; color: #d32f2f; }
+    .header p { font-size: 13px; color: #666; margin-top: 4px; }
+    
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card-title { font-size: 14px; color: #333; font-weight: 600; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background: #fafafa; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #d32f2f; background: white; }
+    
+    .denom-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .denom-item { background: #f5f5f5; border-radius: 8px; padding: 12px; }
+    .denom-item .denom-label { font-size: 14px; color: #333; margin-bottom: 4px; }
+    .denom-item .denom-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; text-align: right; }
+    
+    .summary-card { background: #fff3e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ffe0b2; }
+    .summary-row:last-child { border-bottom: none; font-weight: 600; }
+    .summary-row span:first-child { color: #333; }
+    .summary-row span:last-child { color: #d32f2f; }
+    
+    .diff-display { text-align: center; padding: 16px; border-radius: 8px; margin-bottom: 16px; font-size: 24px; font-weight: bold; }
+    .diff-ok { background: #e8f5e9; color: #2e7d32; }
+    .diff-warn { background: #fff3e0; color: #ef6c00; }
+    .diff-error { background: #ffebee; color: #c62828; }
+    
+    .submit-btn { width: 100%; padding: 16px; background: #d32f2f; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .submit-btn:active { background: #b71c1c; }
+    .submit-btn:disabled { background: #ccc; }
+    
+    .result { text-align: center; padding: 24px; }
+    .result-icon { font-size: 48px; margin-bottom: 12px; }
+    .result-text { font-size: 16px; color: #333; }
+    
+    .date-badge { text-align: center; background: #d32f2f; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-bottom: 16px; display: inline-block; }
+    .status-bar { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
+    .status-bar.success { background: #d4edda; color: #155724; display: block; }
+    .status-bar.error { background: #f8d7da; color: #721c24; display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🍗 鮮樂炸雞</h1>
+      <p>每日現金回報</p>
+    </div>
+    
+    <div id="formView">
+      <div style="text-align: center;">
+        <span class="date-badge" id="todayDate"></span>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">基本資料</div>
+        
+        <div class="form-group">
+          <label>店家</label>
+          <select id="store" required>
+            <option value="">請選擇店家</option>
+            <option value="總店">總店（東信路）</option>
+            <option value="麥金店">麥金店</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>填報人</label>
+          <input type="text" id="reporter" placeholder="請輸入您的名字" required>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">現金面額清點</div>
+        
+        <div class="denom-grid">
+          <div class="denom-item">
+            <div class="denom-label">🪙 1 元硬幣（枚）</div>
+            <input type="number" id="c1" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item">
+            <div class="denom-label">🪙 5 元硬幣（枚）</div>
+            <input type="number" id="c5" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item">
+            <div class="denom-label">🪙 10 元硬幣（枚）</div>
+            <input type="number" id="c10" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item">
+            <div class="denom-label">🪙 50 元硬幣（枚）</div>
+            <input type="number" id="c50" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item">
+            <div class="denom-label">💵 100 元紙鈔（張）</div>
+            <input type="number" id="b100" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item">
+            <div class="denom-label">💵 500 元紙鈔（張）</div>
+            <input type="number" id="b500" class="denom-input" value="0" min="0">
+          </div>
+          <div class="denom-item" style="grid-column: span 2;">
+            <div class="denom-label">💵 1000 元紙鈔（張）</div>
+            <input type="number" id="b1000" class="denom-input" value="0" min="0">
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">銷售資料</div>
+        
+        <div class="form-group">
+          <label>系統銷售額（POS）</label>
+          <input type="number" id="systemSales" placeholder="請輸入系統銷售額" min="0">
+        </div>
+        
+        <div class="summary-card">
+          <div class="summary-row">
+            <span>硬幣合計</span>
+            <span id="coinTotal">$0</span>
+          </div>
+          <div class="summary-row">
+            <span>紙鈔合計</span>
+            <span id="billTotal">$0</span>
+          </div>
+          <div class="summary-row">
+            <span>實收現金</span>
+            <span id="cashTotal">$0</span>
+          </div>
+        </div>
+        
+        <div class="diff-display diff-ok" id="diffDisplay">差異：$0</div>
+      </div>
+      
+      <div class="card">
+        <div class="form-group">
+          <label>備註（選填）</label>
+          <input type="text" id="note" placeholder="有任何異常請說明">
+        </div>
+      </div>
+      
+      <button class="submit-btn" id="submitBtn" onclick="submitForm()">送出回報</button>
+      <div class="status-bar" id="statusBar"></div>
+    </div>
+    
+    <div id="resultView" style="display:none;">
+      <div class="card">
+        <div class="result">
+          <div class="result-icon">✅</div>
+          <div class="result-text" id="resultText">回報已送出！</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyA3f9deGRKW64lBqNoMIAr4d_P5u7XPSoA",
+      authDomain: "xianle-cash.firebaseapp.com",
+      projectId: "xianle-cash",
+      storageBucket: "xianle-cash.firebasestorage.app",
+      messagingSenderId: "843450474089",
+      appId: "1:843450474089:web:7811c37a414826c73d4cf8",
+      measurementId: "G-J2H6037C64"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // Expose to global scope
+    window.db = db;
+    window.collection = collection;
+    window.addDoc = addDoc;
+    window.serverTimestamp = serverTimestamp;
+    window.query = query;
+    window.orderBy = orderBy;
+    window.limit = limit;
+    window.getDocs = getDocs;
+  </script>
+  
+  <script>
+    // Initialize date
+    const today = new Date();
+    document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    function calcCash() {
+      const c1 = parseInt(document.getElementById('c1').value) || 0;
+      const c5 = parseInt(document.getElementById('c5').value) || 0;
+      const c10 = parseInt(document.getElementById('c10').value) || 0;
+      const c50 = parseInt(document.getElementById('c50').value) || 0;
+      const b100 = parseInt(document.getElementById('b100').value) || 0;
+      const b500 = parseInt(document.getElementById('b500').value) || 0;
+      const b1000 = parseInt(document.getElementById('b1000').value) || 0;
+      
+      const coinTotal = c1 * 1 + c5 * 5 + c10 * 10 + c50 * 50;
+      const billTotal = b100 * 100 + b500 * 500 + b1000 * 1000;
+      const cashTotal = coinTotal + billTotal;
+      
+      document.getElementById('coinTotal').textContent = '$' + coinTotal.toLocaleString();
+      document.getElementById('billTotal').textContent = '$' + billTotal.toLocaleString();
+      document.getElementById('cashTotal').textContent = '$' + cashTotal.toLocaleString();
+      
+      return cashTotal;
+    }
+    
+    function updateDiff() {
+      const cash = calcCash();
+      const system = parseInt(document.getElementById('systemSales').value) || 0;
+      const diff = cash - system;
+      
+      const diffEl = document.getElementById('diffDisplay');
+      if (diff === 0) {
+        diffEl.className = 'diff-display diff-ok';
+        diffEl.textContent = '差異：$0 ✅';
+      } else if (Math.abs(diff) <= 50) {
+        diffEl.className = 'diff-display diff-warn';
+        diffEl.textContent = '差異：' + (diff > 0 ? '+$' : '-$') + Math.abs(diff).toLocaleString() + ' ⚠️';
+      } else {
+        diffEl.className = 'diff-display diff-error';
+        diffEl.textContent = '差異：' + (diff > 0 ? '+$' : '-$') + Math.abs(diff).toLocaleString() + ' ❌';
+      }
+    }
+    
+    ['c1','c5','c10','c50','b100','b500','b1000','systemSales'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateDiff);
+    });
+    
+    async function submitForm() {
+      const store = document.getElementById('store').value;
+      const reporter = document.getElementById('reporter').value.trim();
+      const systemSales = parseInt(document.getElementById('systemSales').value) || 0;
+      const note = document.getElementById('note').value.trim();
+      
+      if (!store) { alert('請選擇店家'); return; }
+      if (!reporter) { alert('請輸入填報人'); return; }
+      if (!systemSales) { alert('請輸入系統銷售額'); return; }
+      
+      const cashReceived = calcCash();
+      const diff = cashReceived - systemSales;
+      
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('submitBtn').textContent = '送出中...';
+      
+      try {
+        await addDoc(collection(window.db, 'reports'), {
+          date: today.toISOString().split('T')[0],
+          store: store,
+          reporter: reporter,
+          systemSales: systemSales,
+          cashReceived: cashReceived,
+          diff: diff,
+          note: note,
+          timestamp: new Date().toISOString()
+        });
+        
+        document.getElementById('formView').style.display = 'none';
+        document.getElementById('resultView').style.display = 'block';
+        document.getElementById('resultText').textContent = '回報已送出！';
+      } catch (e) {
+        document.getElementById('statusBar').className = 'status-bar error';
+        document.getElementById('statusBar').textContent = '送出失敗：' + e.message;
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '送出回報';
+      }
+    }
+  </script>
+</body>
+</html>
