@@ -123,18 +123,23 @@
           <input type="number" id="systemSales" placeholder="請輸入系統銷售額" min="0">
         </div>
         
+        <div class="form-group">
+          <label>線上收款（線上點餐）</label>
+          <input type="number" id="onlinePayment" placeholder="請輸入線上收款金額" min="0" value="0">
+        </div>
+        
         <div class="summary-card">
           <div class="summary-row">
-            <span>硬幣合計</span>
-            <span id="coinTotal">$0</span>
-          </div>
-          <div class="summary-row">
-            <span>紙鈔合計</span>
-            <span id="billTotal">$0</span>
-          </div>
-          <div class="summary-row">
-            <span>實收現金</span>
+            <span>現場現金</span>
             <span id="cashTotal">$0</span>
+          </div>
+          <div class="summary-row">
+            <span>線上收款</span>
+            <span id="onlineDisplay">$0</span>
+          </div>
+          <div class="summary-row">
+            <span>合計</span>
+            <span id="totalDisplay">$0</span>
           </div>
         </div>
         
@@ -218,8 +223,13 @@
     
     function updateDiff() {
       const cash = calcCash();
+      const online = parseInt(document.getElementById('onlinePayment').value) || 0;
       const system = parseInt(document.getElementById('systemSales').value) || 0;
-      const diff = cash - system;
+      const total = cash + online;
+      const diff = total - system;
+      
+      document.getElementById('onlineDisplay').textContent = '$' + online.toLocaleString();
+      document.getElementById('totalDisplay').textContent = '$' + total.toLocaleString();
       
       const diffEl = document.getElementById('diffDisplay');
       if (diff === 0) {
@@ -234,7 +244,7 @@
       }
     }
     
-    ['c1','c5','c10','c50','b100','b500','b1000','systemSales'].forEach(id => {
+    ['c1','c5','c10','c50','b100','b500','b1000','systemSales','onlinePayment'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateDiff);
     });
     
@@ -242,6 +252,7 @@
       const store = document.getElementById('store').value;
       const reporter = document.getElementById('reporter').value.trim();
       const systemSales = parseInt(document.getElementById('systemSales').value) || 0;
+      const onlinePayment = parseInt(document.getElementById('onlinePayment').value) || 0;
       const note = document.getElementById('note').value.trim();
       
       if (!store) { alert('請選擇店家'); return; }
@@ -249,7 +260,8 @@
       if (!systemSales) { alert('請輸入系統銷售額'); return; }
       
       const cashReceived = calcCash();
-      const diff = cashReceived - systemSales;
+      const totalReceived = cashReceived + onlinePayment;
+      const diff = totalReceived - systemSales;
       
       document.getElementById('submitBtn').disabled = true;
       document.getElementById('submitBtn').textContent = '送出中...';
@@ -261,6 +273,8 @@
           reporter: reporter,
           systemSales: systemSales,
           cashReceived: cashReceived,
+          onlinePayment: onlinePayment,
+          totalReceived: totalReceived,
           diff: diff,
           note: note,
           timestamp: new Date().toISOString()
