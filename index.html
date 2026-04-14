@@ -214,51 +214,59 @@
     document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
     
     // Load yesterday's petty cash on init
-    (async function loadPettyCash() {
-      const yesterday = new Date();
+    async function loadPettyCash() {
+      const todayStr = today.toISOString().split('T')[0];
+      const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const store = document.getElementById('store').value;
+      
+      // Build query: filter by store AND yesterday's date
+      const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
+      const body = {
+        structuredQuery: {
+          from: [{ collectionId: 'reports' }],
+          where: {
+            compositeFilter: {
+              op: 'AND',
+              filters: [
+                { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: yesterdayStr } } },
+                { fieldFilter: { field: { fieldPath: 'store' }, op: 'EQUAL', value: { stringValue: store } } }
+              ]
+            }
+          },
+          limit: 1,
+          orderBy: [{ field: { fieldPath: 'date' }, direction: 'DESC' }]
+        }
+      };
       
       try {
-        // Query yesterday's reports
-        const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            structuredQuery: {
-              from: [{ collectionId: 'reports' }],
-              where: {
-                fieldFilter: {
-                  field: { fieldPath: 'date' },
-                  op: 'EQUAL',
-                  value: { stringValue: yesterdayStr }
-                }
-              },
-              limit: 10
-            }
-          })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         
-        // Sum up yesterday's cashReceived from all stores
-        let totalCash = 0;
+        // Get yesterday's totalReceived for this store
+        let yesterdayCash = 0;
         for (const item of data) {
           if (item.document && item.document.fields) {
             const f = item.document.fields;
             const cash = parseInt(f.cashReceived?.integerValue || f.cashReceived?.doubleValue || 0);
-            totalCash += cash;
+            yesterdayCash = cash;
+            break;
           }
         }
         
-        // Add 2000 paper money reserve
-        const pettyCash = totalCash + 2000;
+        // Add 2000 paper money reserve + yesterday's coin balance
+        const pettyCash = yesterdayCash + 2000;
         document.getElementById('pettyCash').textContent = '$' + pettyCash.toLocaleString();
       } catch (e) {
         console.error('Failed to load petty cash:', e);
         document.getElementById('pettyCash').textContent = '$0';
       }
-    })();
+    }
     
     function calcCash() {
       const c1 = parseInt(document.getElementById('c1').value) || 0;
@@ -305,6 +313,16 @@
     
     ['c1','c5','c10','c50','b100','b500','b1000','systemSales','onlinePayment'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateDiff);
+    });
+    
+    // 選擇店家後自動載入昨日零用金
+    document.getElementById('store').addEventListener('change', () => {
+      const store = document.getElementById('store').value;
+      if (store) {
+        loadPettyCash();
+      } else {
+        document.getElementById('pettyCash').textContent = '$--';
+      }
     });
     
     async function submitForm() {
