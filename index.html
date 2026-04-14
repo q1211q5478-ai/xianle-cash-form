@@ -395,8 +395,6 @@
       const cashTotal = calcCash();
       const pettyCash = parseInt(document.getElementById('pettyCash').textContent.replace(/[$,]/g, '')) || 0;
       const cashReceived = cashTotal - pettyCash; // 現場現金
-      const onlinePayment = parseInt(document.getElementById('onlinePayment').value) || 0;
-      const systemSales = parseInt(document.getElementById('systemSales').value) || 0;
       const totalReceived = cashReceived + onlinePayment; // 合計
       const diff = totalReceived - (systemSales + onlinePayment); // 差異
       
