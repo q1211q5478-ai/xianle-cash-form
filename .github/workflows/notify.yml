@@ -1,0 +1,68 @@
+name: Daily Cash Report Notification
+
+on:
+  schedule:
+    # 每天凌晨 2:00 台灣時間 = UTC 18:00
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get today's reports from Firestore
+        id: fetch
+        run: |
+          curl -s "https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "structuredQuery": {
+                "from": [{"collectionId": "reports"}],
+                "where": {
+                  "fieldFilter": {
+                    "field": {"fieldPath": "date"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": "'$(date +%Y-%m-%d)'"}
+                  }
+                },
+                "limit": 10
+              }
+            }' > reports.json
+          
+          echo "Reports fetched:"
+          cat reports.json
+      
+      - name: Send Telegram Notification
+        if: success()
+        run: |
+          TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
+          TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}"
+          
+          # Parse reports and build message
+          # Extract data from JSON response
+          TODAY=$(date +%Y-%m-%d)
+          
+          MESSAGE="🍗 鮮樂炸雞｜每日現金回報
+📅 ${TODAY}
+"
+          
+          # Check if we have reports
+          if grep -q "documents" reports.json && ! grep -q '"documents": \[\]' reports.json; then
+            # Parse store data (simplified)
+            MESSAGE+="
+✅ 今日已有回報記錄
+"
+          else
+            MESSAGE+="
+⚠️ 今日尚未有回報記錄
+請聯繫店长填報
+"
+          fi
+          
+          # Send to Telegram
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=HTML"
