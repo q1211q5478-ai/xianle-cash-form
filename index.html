@@ -62,6 +62,18 @@
         <span class="date-badge" id="todayDate"></span>
       </div>
       
+      <div class="card" style="background:#e3f2fd;border-left:4px solid #1565c0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:13px;color:#666;margin-bottom:4px;">💰 今日零用金（昨日結餘）</div>
+            <div style="font-size:24px;font-weight:bold;color:#1565c0;" id="pettyCash">載入中...</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:#999;">自動帶入</div>
+          </div>
+        </div>
+      </div>
+      
       <div class="card">
         <div class="card-title">基本資料</div>
         
@@ -200,6 +212,53 @@
     // Initialize date
     const today = new Date();
     document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Load yesterday's petty cash on init
+    (async function loadPettyCash() {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      try {
+        // Query yesterday's reports
+        const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: 'reports' }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: 'date' },
+                  op: 'EQUAL',
+                  value: { stringValue: yesterdayStr }
+                }
+              },
+              limit: 10
+            }
+          })
+        });
+        const data = await res.json();
+        
+        // Sum up yesterday's cashReceived from all stores
+        let totalCash = 0;
+        for (const item of data) {
+          if (item.document && item.document.fields) {
+            const f = item.document.fields;
+            const cash = parseInt(f.cashReceived?.integerValue || f.cashReceived?.doubleValue || 0);
+            totalCash += cash;
+          }
+        }
+        
+        // Add 2000 paper money reserve
+        const pettyCash = totalCash + 2000;
+        document.getElementById('pettyCash').textContent = '$' + pettyCash.toLocaleString();
+      } catch (e) {
+        console.error('Failed to load petty cash:', e);
+        document.getElementById('pettyCash').textContent = '$0';
+      }
+    })();
     
     function calcCash() {
       const c1 = parseInt(document.getElementById('c1').value) || 0;
