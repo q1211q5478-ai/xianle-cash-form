@@ -330,18 +330,19 @@
       const billTotal = b100 * 100 + b500 * 500 + b1000 * 1000;
       const cashTotal = coinTotal + billTotal;
       
-      document.getElementById('cashTotal').textContent = '$' + cashTotal.toLocaleString();
-      
       return cashTotal;
     }
     
     function updateDiff() {
-      const cash = calcCash();
+      const cashTotal = calcCash();
+      const pettyCash = parseInt(document.getElementById('pettyCash').textContent.replace(/[$,]/g, '')) || 0;
+      const cashReceived = cashTotal - pettyCash; // 現場現金 = 面額總計 - 今日零用金
       const online = parseInt(document.getElementById('onlinePayment').value) || 0;
       const system = parseInt(document.getElementById('systemSales').value) || 0;
-      const total = cash + online;
-      const diff = total - system;
+      const total = cashReceived + online; // 合計 = 現場現金 + 線上收款
+      const diff = total - (system + online); // 差異 = 合計 - 銷售額
       
+      document.getElementById('cashTotal').textContent = '$' + cashReceived.toLocaleString();
       document.getElementById('onlineDisplay').textContent = '$' + online.toLocaleString();
       document.getElementById('totalDisplay').textContent = '$' + total.toLocaleString();
       
@@ -383,9 +384,13 @@
       if (!reporter) { alert('請輸入填報人'); return; }
       if (!systemSales) { alert('請輸入系統銷售額'); return; }
       
-      const cashReceived = calcCash();
-      const totalReceived = cashReceived + onlinePayment;
-      const diff = totalReceived - systemSales;
+      const cashTotal = calcCash();
+      const pettyCash = parseInt(document.getElementById('pettyCash').textContent.replace(/[$,]/g, '')) || 0;
+      const cashReceived = cashTotal - pettyCash; // 現場現金
+      const onlinePayment = parseInt(document.getElementById('onlinePayment').value) || 0;
+      const systemSales = parseInt(document.getElementById('systemSales').value) || 0;
+      const totalReceived = cashReceived + onlinePayment; // 合計
+      const diff = totalReceived - (systemSales + onlinePayment); // 差異
       
       document.getElementById('submitBtn').disabled = true;
       document.getElementById('submitBtn').textContent = '送出中...';
@@ -399,6 +404,7 @@
           cashReceived: cashReceived,
           onlinePayment: onlinePayment,
           totalReceived: totalReceived,
+          pettyCash: pettyCash,
           diff: diff,
           note: note,
           timestamp: new Date().toISOString()
