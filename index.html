@@ -59,7 +59,8 @@
     
     <div id="formView">
       <div style="text-align: center;">
-        <span class="date-badge" id="todayDate"></span>
+        <input type="date" id="reportDate" style="background:#d32f2f;color:white;border:none;padding:8px 16px;border-radius:20px;font-size:14px;cursor:pointer;text-align:center;">
+        <div id="todayDate" style="color:#999;font-size:12px;margin-top:4px;"></div>
       </div>
       
       <div class="card" style="background:#e3f2fd;border-left:4px solid #1565c0;">
@@ -211,10 +212,23 @@
   <script>
     // Initialize date
     const today = new Date();
-    document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
-    
-    // Load yesterday's petty cash on init
-      // Store name → store_id mapping (matches bot's STORES)
+    const dateInput = document.getElementById('reportDate');
+    dateInput.value = today.toISOString().split('T')[0];
+    document.getElementById('todayDate').textContent = today.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // 日期更換時重新載入零用金
+    dateInput.addEventListener('change', () => {
+      const d = new Date(dateInput.value);
+      document.getElementById('todayDate').textContent = d.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      // 更新 today 供其他function使用
+      window.reportDate = d;
+      loadPettyCash();
+    });
+
+    window.reportDate = today;
+    window.today = today;
+
+    // Store name → store_id mapping (matches bot's STORES)
     const STORE_NAME_TO_ID = {
       '總店': 'zongdian',
       '麥金店': 'maijin',
@@ -224,12 +238,10 @@
       'maijin': '麥金店',
     };
     
-    // Load today's petty cash (priority: today's petty_settings > yesterday's report + 2000)
+    // Load today's petty cash (改為讓用戶自行輸入零用金，廢除自動計算)
     async function loadPettyCash() {
-      const todayStr = today.toISOString().split('T')[0];
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const selectedDate = document.getElementById('reportDate').value;
+      if (!selectedDate) return;
       const storeName = document.getElementById('store').value;
       const storeId = STORE_NAME_TO_ID[storeName];
       
@@ -238,7 +250,7 @@
         return;
       }
       
-      // 1. 查今天的 petty_settings（今天 Bot 設定的值）
+      // 查 petty_settings（用戶自行設定的零用金）
       try {
         const settingsUrl = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
         const settingsRes = await fetch(settingsUrl, {
@@ -252,7 +264,7 @@
                   op: 'AND',
                   filters: [
                     { fieldFilter: { field: { fieldPath: 'store_id' }, op: 'EQUAL', value: { stringValue: storeId } } },
-                    { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: todayStr } } }
+                    { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: selectedDate } } }
                   ]
                 }
               },
@@ -265,29 +277,16 @@
           if (item.document && item.document.fields && item.document.fields.amount) {
             const amount = parseInt(item.document.fields.amount.integerValue || item.document.fields.amount.doubleValue || 0);
             document.getElementById('pettyCash').textContent = '$' + amount.toLocaleString();
-            return; // 找到今天設定值就直接用
+            return;
           }
         }
       } catch (e) {
         console.error('Failed to load petty settings:', e);
       }
       
-      // 2. 查昨天報表的 cashReceived + 2000（自動計算）
-      try {
-        const url = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
-        const body = {
-          structuredQuery: {
-            from: [{ collectionId: 'reports' }],
-            where: {
-              compositeFilter: {
-                op: 'AND',
-                filters: [
-                  { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: yesterdayStr } } },
-                  { fieldFilter: { field: { fieldPath: 'store' }, op: 'EQUAL', value: { stringValue: storeName } } }
-                ]
-              }
-            },
-            limit: 1,
+      // 如果沒有設定過，顯示 $-- 讓用戶自己填
+      document.getElementById('pettyCash').textContent = '$--（未設定）';
+    }
             orderBy: [{ field: { fieldPath: 'date' }, direction: 'DESC' }]
           }
         };
