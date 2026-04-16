@@ -225,6 +225,11 @@
       loadPettyCash();
     });
 
+    // 頁面載入時自動抓一次零用金
+    window.addEventListener('load', () => {
+      setTimeout(loadPettyCash, 300);
+    });
+
     window.reportDate = today;
     window.today = today;
 
