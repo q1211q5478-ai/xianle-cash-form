@@ -245,17 +245,23 @@
     
     // Load today's petty cash (改為讓用戶自行輸入零用金，廢除自動計算)
     async function loadPettyCash() {
+      const el = document.getElementById('pettyCash');
       const selectedDate = document.getElementById('reportDate').value;
       if (!selectedDate) return;
       const storeName = document.getElementById('store').value;
       const storeId = STORE_NAME_TO_ID[storeName];
       
       if (!storeName) {
-        document.getElementById('pettyCash').textContent = '$--';
+        el.textContent = '$--';
         return;
       }
       
+      el.textContent = '載入中...';
+      
       // 查 petty_settings（用戶自行設定的零用金）
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      
       try {
         const settingsUrl = `https://firestore.googleapis.com/v1/projects/xianle-cash/databases/(default)/documents:runQuery`;
         const settingsRes = await fetch(settingsUrl, {
@@ -275,50 +281,26 @@
               },
               limit: 1
             }
-          })
+          }),
+          signal: controller.signal
         });
+        clearTimeout(timeout);
         const settingsData = await settingsRes.json();
         for (const item of settingsData) {
           if (item.document && item.document.fields && item.document.fields.amount) {
             const amount = parseInt(item.document.fields.amount.integerValue || item.document.fields.amount.doubleValue || 0);
-            document.getElementById('pettyCash').textContent = '$' + amount.toLocaleString();
+            el.textContent = '$' + amount.toLocaleString();
             return;
           }
         }
       } catch (e) {
         console.error('Failed to load petty settings:', e);
+        el.textContent = '$err';
+        return;
       }
       
       // 如果沒有設定過，顯示 $-- 讓用戶自己填
-      document.getElementById('pettyCash').textContent = '$--（未設定）';
-    }
-            orderBy: [{ field: { fieldPath: 'date' }, direction: 'DESC' }]
-          }
-        };
-        
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        
-        let yesterdayCash = 0;
-        for (const item of data) {
-          if (item.document && item.document.fields) {
-            const f = item.document.fields;
-            const cash = parseInt(f.cashReceived?.integerValue || f.cashReceived?.doubleValue || 0);
-            yesterdayCash = cash;
-            break;
-          }
-        }
-        
-        const pettyCash = yesterdayCash + 2000;
-        document.getElementById('pettyCash').textContent = '$' + pettyCash.toLocaleString();
-      } catch (e) {
-        console.error('Failed to load petty cash:', e);
-        document.getElementById('pettyCash').textContent = '$0';
-      }
+      el.textContent = '$--（未設定）';
     }
     
     function calcCash() {
